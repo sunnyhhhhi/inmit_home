@@ -1,0 +1,6 @@
+{
+  "name": "INMIT 인미트 디자인제작소 - 시각 디자인 전문 스튜디오",
+  "description": "인미트 디자인제작소(INMIT). 디자인 구독 서비스 시작. 패키지, 홍보인쇄물, 웹, 로고 브랜딩 전문. 산업디자인전문회사 및 여성기업 인증.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
