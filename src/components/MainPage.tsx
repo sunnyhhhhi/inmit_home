@@ -73,8 +73,7 @@ export const MainPage: React.FC<MainPageProps> = ({
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600 leading-relaxed max-w-xl font-normal pt-1">
                   <strong>인미트 디자인제작소(INMIT)</strong>는 비즈니스 성과를 창출하는
-                  <strong> 기획 · 패키지 지기구조 · 인쇄 감리 · 웹 구현</strong> 원스톱 전문 스튜디오입니다.
-                  오른쪽 폼을 통해 링크 이동 없이 지금 바로 맞춤 견적을 신청하세요.
+                  <strong> 기획 · 패키지 디자인 · 홍보물 인쇄 · 상세페이지 제작</strong>
                 </p>
               </div>
 
@@ -96,8 +95,8 @@ export const MainPage: React.FC<MainPageProps> = ({
                 </p>
                 <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/20 text-[11px]">
                   <div className="bg-black/15 rounded-lg p-2 text-center">
-                    <span className="text-white/70 block text-[10px]">의뢰 방식</span>
-                    <strong className="text-white font-bold">무제한 의뢰</strong>
+                    <span className="text-white/70 block text-[10px]">기획부터 출력까지</span>
+                    <strong className="text-white font-bold">원스톱디자인</strong>
                   </div>
                   <div className="bg-black/15 rounded-lg p-2 text-center">
                     <span className="text-white/70 block text-[10px]">전담 케어</span>
