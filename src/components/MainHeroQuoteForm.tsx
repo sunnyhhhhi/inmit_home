@@ -269,7 +269,7 @@ export const MainHeroQuoteForm: React.FC<MainHeroQuoteFormProps> = ({
               <input
                 type="text"
                 required
-                placeholder="예: 인미트 또는 개인"
+                placeholder="예: 땡땡회사 또는 개인"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#7db701] focus:ring-2 focus:ring-[#7db701]/20 text-xs sm:text-sm outline-hidden transition-all bg-gray-50/50"
@@ -299,7 +299,7 @@ export const MainHeroQuoteForm: React.FC<MainHeroQuoteFormProps> = ({
               <input
                 type="tel"
                 required
-                placeholder="예: 010-0000-0000"
+                placeholder="예: 010-123-1234"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#7db701] focus:ring-2 focus:ring-[#7db701]/20 text-xs sm:text-sm outline-hidden transition-all bg-gray-50/50"

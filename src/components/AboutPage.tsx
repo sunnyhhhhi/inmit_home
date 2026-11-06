@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Award,
   ShieldCheck,
@@ -15,6 +15,8 @@ import {
   Users,
   Briefcase
 } from 'lucide-react';
+import { CompanyMap } from './CompanyMap';
+import { getStoredCompanyInfo, CompanyInfo } from '../utils/storage';
 
 interface AboutPageProps {
   onNavigate: (page: string) => void;
@@ -22,6 +24,16 @@ interface AboutPageProps {
 }
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onOpenCertModal }) => {
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(() => getStoredCompanyInfo());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setCompanyInfo(getStoredCompanyInfo());
+    };
+    window.addEventListener('inmit-company-info-updated', handleUpdate);
+    return () => window.removeEventListener('inmit-company-info-updated', handleUpdate);
+  }, []);
+
   return (
     <div className="pt-28 pb-20 bg-white">
       {/* 1. Header Section */}
@@ -379,19 +391,18 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onOpenCertModa
             </div>
           </div>
 
-          {/* Design Subscription Feature Banner in AboutPage */}
-          <div className="mt-14 p-8 sm:p-10 rounded-3xl bg-[#7c726e] text-white border border-[#6b625e] shadow-xl relative overflow-hidden text-left">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Design Subscription Feature Banner in AboutPage in soft beige */}
+          <div className="mt-14 p-8 sm:p-10 rounded-3xl bg-[#fbf8f3] text-gray-900 border border-[#eae2d5] shadow-sm relative overflow-hidden text-left">
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-8 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black border border-white/30">
-                  <Sparkles className="w-3.5 h-3.5 text-[#7db701]" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#7db701]/15 text-[#6c9f00] text-xs font-black border border-[#7db701]/30">
+                  <Sparkles className="w-3.5 h-3.5" />
                   <span>NEW SERVICE</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  <span className="text-white">디자인 구독 서비스 시작</span>
+                <h3 className="text-2xl sm:text-3xl font-black text-gray-950 tracking-tight">
+                  <span>디자인 구독 서비스 시작</span>
                 </h3>
-                <p className="text-sm text-white/90 leading-relaxed font-light">
+                <p className="text-sm text-gray-600 leading-relaxed font-normal">
                   건별 품의와 계약 절차 없이, 월 고정 비용으로 인미트의 전담 디자이너와 함께하세요.<br className="hidden sm:inline" />
                   패키지 전개도, 인쇄 홍보물, 웹페이지, SNS 그래픽까지 한 곳에서 무제한 의뢰하고 사후 AS 평생 지원을 받으실 수 있습니다.
                 </p>
@@ -399,11 +410,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onOpenCertModa
               <div className="lg:col-span-4 flex flex-col gap-3">
                 <button
                   onClick={() => onNavigate('contact')}
-                  className="w-full py-3.5 px-6 rounded-xl bg-[#7db701] hover:bg-[#6fa300] text-white text-xs sm:text-sm font-bold shadow-lg transition-all text-center cursor-pointer"
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#7db701] hover:bg-[#6fa300] text-white text-xs sm:text-sm font-bold shadow-md transition-all text-center cursor-pointer"
                 >
                   구독 플랜 상담 및 견적 문의
                 </button>
-                <p className="text-[11px] text-white/70 text-center">
+                <p className="text-[11px] text-gray-500 text-center">
                   * 기업 규모 및 월간 작업량에 맞춰 유연하게 설계해 드립니다.
                 </p>
               </div>
@@ -419,6 +430,28 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onNavigate, onOpenCertModa
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* 5. Company Location & Google Maps Section */}
+      <section className="py-20 border-b border-gray-100 bg-gray-50/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7db701]/10 text-[#7db701] text-xs font-bold tracking-wider uppercase mb-3">
+              LOCATION & DIRECTIONS
+            </div>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              오시는 길 및 본사 위치
+            </h2>
+            <p className="text-sm text-gray-500 mt-2">
+              인미트 디자인제작소는 경기 서남부권의 산업 중심지인 군포/안양국제유통단지에 위치해 있습니다.
+            </p>
+          </div>
+
+          <CompanyMap
+            address={companyInfo.address}
+            locationGuide={companyInfo.locationGuide}
+          />
         </div>
       </section>
     </div>

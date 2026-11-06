@@ -91,11 +91,11 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
-            {/* Admin Direct Access (No Password) */}
+            {/* Admin Access (Password Protected) */}
             <button
               onClick={onOpenAdmin}
               className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
-              title="관리자 모드 (포트폴리오 관리)"
+              title="관리자 모드"
             >
               <Settings className="w-4 h-4 text-gray-600" />
               <span className="text-gray-600">관리자</span>

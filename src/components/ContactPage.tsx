@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Mail,
   Phone,
@@ -12,10 +12,22 @@ import {
   AlertCircle,
   Check,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Paperclip,
+  Upload,
+  X,
+  FileText,
+  MapPin
 } from 'lucide-react';
-import { InquiryItem, PortfolioItem } from '../types/portfolio';
-import { saveStoredInquiries, getStoredInquiries } from '../utils/storage';
+import { InquiryItem, PortfolioItem, AttachedFileMeta } from '../types/portfolio';
+import {
+  saveStoredInquiries,
+  getStoredInquiries,
+  getStoredKakaoSettings,
+  KakaoSettings,
+  getStoredCompanyInfo,
+  CompanyInfo
+} from '../utils/storage';
 
 interface ContactPageProps {
   prefilledProject?: PortfolioItem | null;
@@ -36,13 +48,37 @@ export const ContactPage: React.FC<ContactPageProps> = ({
   const [deadline, setDeadline] = useState<string>('');
   const [referenceUrl, setReferenceUrl] = useState<string>('http://www.inmit.co.kr');
   const [description, setDescription] = useState<string>('');
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileMeta[]>([]);
   const [agreePrivacy, setAgreePrivacy] = useState<boolean>(true);
+
+  // Kakao & Company settings
+  const [kakaoSettings, setKakaoSettings] = useState<KakaoSettings>(() => getStoredKakaoSettings());
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(() => getStoredCompanyInfo());
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Keep settings in sync
+  useEffect(() => {
+    const handleKakaoSync = () => {
+      setKakaoSettings(getStoredKakaoSettings());
+    };
+    const handleCompanySync = () => {
+      setCompanyInfo(getStoredCompanyInfo());
+    };
+    window.addEventListener('inmit-kakao-updated', handleKakaoSync);
+    window.addEventListener('inmit-company-info-updated', handleCompanySync);
+    return () => {
+      window.removeEventListener('inmit-kakao-updated', handleKakaoSync);
+      window.removeEventListener('inmit-company-info-updated', handleCompanySync);
+    };
+  }, []);
 
   // Handle prefilled project if user arrived via "이 프로젝트 스타일로 문의하기"
   useEffect(() => {
@@ -88,14 +124,85 @@ export const ContactPage: React.FC<ContactPageProps> = ({
     );
   };
 
-  const handleCopy = (text: string, type: 'email' | 'phone') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = 3 - attachedFiles.length;
+    if (remainingSlots <= 0) {
+      alert('파일은 최대 3개까지 첨부 가능합니다.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert(`파일은 최대 3개까지만 첨부할 수 있어 앞선 ${remainingSlots}개 파일만 추가되었습니다.`);
+    }
+
+    filesToProcess.forEach((file) => {
+      // Check duplicate
+      if (attachedFiles.some((f) => f.name === file.name && f.size === file.size)) return;
+
+      const isImage = file.type.startsWith('image/');
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setAttachedFiles((prev) => {
+            if (prev.length >= 3) return prev;
+            return [
+              ...prev,
+              {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                dataUrl: event.target?.result as string,
+              },
+            ];
+          });
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setAttachedFiles((prev) => {
+          if (prev.length >= 3) return prev;
+          return [
+            ...prev,
+            {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+            },
+          ];
+        });
+      }
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleCopy = (text: string, type: 'email' | 'phone' | 'address') => {
     navigator.clipboard.writeText(text);
     if (type === 'email') {
       setCopiedEmail(true);
       setTimeout(() => setCopiedEmail(false), 2000);
-    } else {
+    } else if (type === 'phone') {
       setCopiedPhone(true);
       setTimeout(() => setCopiedPhone(false), 2000);
+    } else {
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
 
@@ -129,6 +236,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
       deadline: deadline || '협의 필요',
       referenceUrl: referenceUrl.trim() || 'http://www.inmit.co.kr',
       description: description.trim() || '상담 요청',
+      attachedFiles: attachedFiles,
       status: '신규접수',
       createdAt: new Date().toLocaleString('ko-KR', {
         year: 'numeric',
@@ -254,7 +362,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                         </label>
                         <input
                           type="text"
-                          placeholder="예: 낫선코스메틱 또는 개인"
+                          placeholder="예: 땡땡회사 또는 개인"
                           value={companyName}
                           onChange={(e) => setCompanyName(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7db701] focus:ring-2 focus:ring-[#7db701]/20 text-xs sm:text-sm outline-hidden"
@@ -280,7 +388,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                         <input
                           type="tel"
                           required
-                          placeholder="예: 010-9072-1005"
+                          placeholder="예: 010-123-1234"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7db701] focus:ring-2 focus:ring-[#7db701]/20 text-xs sm:text-sm outline-hidden"
@@ -368,7 +476,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                       프로젝트 소개 및 상세 요청사항
                     </label>
                     <textarea
-                      rows={5}
+                      rows={4}
                       placeholder="제품 설명, 필요한 패키지 규격, 페이지 수(인쇄물), 제작 수량, 혹은 고민하고 계신 브랜드 콘셉트에 대해 편안하게 적어주세요."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -376,7 +484,98 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                     />
                   </div>
 
-                  {/* 6. 개인정보 수집 및 이용 동의 */}
+                  {/* 6. 파일 첨부 (메인처럼 최대 3개 첨부 지원) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                        <Paperclip className="w-3.5 h-3.5 text-[#7db701]" />
+                        <span>첨부파일 <span className="text-[#7db701] font-semibold">(최대 3개)</span></span>
+                        {attachedFiles.length > 0 && (
+                          <span className="text-[11px] text-gray-400 font-mono">
+                            ({attachedFiles.length}/3)
+                          </span>
+                        )}
+                      </label>
+                      {attachedFiles.length < 3 ? (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-[11px] text-[#7db701] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Upload className="w-3 h-3" />
+                          파일 추가 ({attachedFiles.length}/3)
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 font-medium">
+                          3개 파일 첨부 완료
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.ai,.zip,.doc,.docx,.ppt,.pptx"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {/* Drag & Drop Trigger Area when empty */}
+                    {attachedFiles.length === 0 ? (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border border-dashed border-gray-300 hover:border-[#7db701] rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-[#7db701]/5"
+                      >
+                        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                          <Upload className="w-4 h-4 text-gray-400" />
+                          <span>참고 기획서, 시안, 관련 이미지 파일을 첨부해 주세요 (최대 3개, PDF·AI·이미지)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Attached Files List & Preview */
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {attachedFiles.map((file, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {file.dataUrl ? (
+                                <img
+                                  src={file.dataUrl}
+                                  alt="preview"
+                                  className="w-9 h-9 rounded object-cover border border-gray-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                                  <FileText className="w-4 h-4" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-800 truncate text-[11px]">
+                                  {file.name}
+                                </p>
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  {formatFileSize(file.size)}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(idx)}
+                              className="p-1 text-gray-400 hover:text-red-500 rounded cursor-pointer shrink-0"
+                              title="삭제"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 7. 개인정보 수집 및 이용 동의 */}
                   <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -419,103 +618,131 @@ export const ContactPage: React.FC<ContactPageProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Direct Channels & Fast Response */}
+          {/* Right Column: Direct Channels & Fast Response (연한 베이지 톤 박스) */}
           <div className="lg:col-span-4 space-y-6">
-            {/* Quick Contact Card */}
-            <div className="bg-[#7c726e] text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl border border-[#6b625e]">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-white/20 text-white font-bold border border-white/30">
+            {/* Quick Contact Card in soft beige */}
+            <div className="bg-[#fbf8f3] text-gray-900 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs border border-[#eae2d5]">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-white text-[#7db701] font-bold border border-[#eae2d5] shadow-2xs">
                 DIRECT CHANNELS
               </span>
 
               <div>
-                <h3 className="text-xl font-bold">빠른 직통 상담</h3>
-                <p className="text-xs text-white/80 mt-1">
+                <h3 className="text-xl font-bold text-gray-950">빠른 직통 상담</h3>
+                <p className="text-xs text-gray-600 mt-1">
                   급한 일정이나 전화 상담을 원하시면 언제든 연락주세요.
                 </p>
               </div>
 
               <div className="space-y-4 pt-2">
                 {/* Phone */}
-                <div className="p-4 rounded-xl bg-black/15 border border-white/20">
+                <div className="p-4 rounded-xl bg-white/90 border border-[#eae2d5] shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/80 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-white" />
+                    <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[#7db701]" />
                       대표 직통 전화
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy('010-9072-1005', 'phone')}
-                      className="text-xs text-white/80 hover:text-white flex items-center gap-1 cursor-pointer"
+                      onClick={() => handleCopy(companyInfo.phone, 'phone')}
+                      className="text-xs text-gray-500 hover:text-black flex items-center gap-1 cursor-pointer"
                     >
                       {copiedPhone ? <Check className="w-3 h-3 text-[#7db701]" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedPhone ? '복사됨' : '복사'}</span>
                     </button>
                   </div>
                   <a
-                    href="tel:010-9072-1005"
-                    className="text-xl font-extrabold text-white mt-1 block hover:text-[#7db701] transition-colors"
+                    href={`tel:${companyInfo.phone}`}
+                    className="text-xl font-extrabold text-gray-950 mt-1 block hover:text-[#7db701] transition-colors"
                   >
-                    010-9072-1005
+                    {companyInfo.phone}
                   </a>
                 </div>
 
                 {/* Email */}
-                <div className="p-4 rounded-xl bg-black/15 border border-white/20">
+                <div className="p-4 rounded-xl bg-white/90 border border-[#eae2d5] shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/80 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-white" />
+                    <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-[#7db701]" />
                       공식 대표 이메일
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy('addition9@naver.com', 'email')}
-                      className="text-xs text-white/80 hover:text-white flex items-center gap-1 cursor-pointer"
+                      onClick={() => handleCopy(companyInfo.email, 'email')}
+                      className="text-xs text-gray-500 hover:text-black flex items-center gap-1 cursor-pointer"
                     >
                       {copiedEmail ? <Check className="w-3 h-3 text-[#7db701]" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedEmail ? '복사됨' : '복사'}</span>
                     </button>
                   </div>
                   <a
-                    href="mailto:addition9@naver.com"
-                    className="text-sm font-bold text-white mt-1 block hover:text-[#7db701] transition-colors truncate"
+                    href={`mailto:${companyInfo.email}`}
+                    className="text-sm font-bold text-gray-950 mt-1 block hover:text-[#7db701] transition-colors truncate"
                   >
-                    addition9@naver.com
+                    {companyInfo.email}
                   </a>
                 </div>
 
                 {/* Reference Website Link */}
-                <div className="p-4 rounded-xl bg-black/15 border border-white/20">
-                  <span className="text-xs text-white/80 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-white" />
+                <div className="p-4 rounded-xl bg-white/90 border border-[#eae2d5] shadow-2xs">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-[#7db701]" />
                     공식 웹사이트
                   </span>
                   <a
-                    href="http://www.inmit.co.kr"
+                    href={companyInfo.websiteUrl.startsWith('http') ? companyInfo.websiteUrl : `https://${companyInfo.websiteUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-semibold text-white mt-1 flex items-center gap-1 hover:underline"
+                    className="text-sm font-semibold text-[#7db701] mt-1 flex items-center gap-1 hover:underline"
                   >
-                    <span>www.inmit.co.kr</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="truncate">{companyInfo.websiteUrl}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   </a>
+                </div>
+
+                {/* Office Address Card */}
+                <div className="p-4 rounded-xl bg-white/90 border border-[#eae2d5] shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#7db701]" />
+                      본사 및 제작소 주소
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(companyInfo.address, 'address')}
+                      className="text-xs text-gray-500 hover:text-black flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedAddress ? <Check className="w-3 h-3 text-[#7db701]" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedAddress ? '복사됨' : '복사'}</span>
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-gray-950 mt-1 leading-snug">
+                    {companyInfo.address}
+                  </p>
+                  {companyInfo.locationGuide && (
+                    <p className="text-[11px] text-gray-500 mt-1 leading-tight">
+                      {companyInfo.locationGuide}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* KakaoTalk Open Chat Button */}
-              <div className="pt-2">
-                <a
-                  href="https://open.kakao.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#ebd300] text-[#191919] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all"
-                >
-                  <MessageCircle className="w-4 h-4 fill-current" />
-                  <span>카카오톡 1:1 상담 바로가기</span>
-                </a>
-                <p className="text-[11px] text-white/70 text-center mt-2">
-                  * 오픈채팅 선호 클라이언트를 위한 실시간 톡 채널
-                </p>
-              </div>
+              {/* KakaoTalk Open Chat Button (Dynamic based on settings) */}
+              {kakaoSettings.enabled && (
+                <div className="pt-2">
+                  <a
+                    href={kakaoSettings.url || 'https://pf.kakao.com/_YtuVn'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#ebd300] text-[#191919] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-current" />
+                    <span>카카오톡 1:1 상담 바로가기</span>
+                  </a>
+                  <p className="text-[11px] text-gray-500 text-center mt-2">
+                    * 오픈채팅 선호 클라이언트를 위한 실시간 톡 채널
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Operating Hours Box */}

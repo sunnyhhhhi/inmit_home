@@ -1,5 +1,6 @@
-import React from 'react';
-import { Mail, Phone, Globe, ShieldCheck, Award, ExternalLink, ArrowUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Phone, Globe, ShieldCheck, Award, ExternalLink, ArrowUp, MapPin } from 'lucide-react';
+import { getStoredCompanyInfo, CompanyInfo } from '../utils/storage';
 
 interface FooterProps {
   setCurrentPage: (page: string) => void;
@@ -14,6 +15,16 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenAdmin,
   onOpenTermsModal,
 }) => {
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(() => getStoredCompanyInfo());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setCompanyInfo(getStoredCompanyInfo());
+    };
+    window.addEventListener('inmit-company-info-updated', handleUpdate);
+    return () => window.removeEventListener('inmit-company-info-updated', handleUpdate);
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -61,10 +72,10 @@ export const Footer: React.FC<FooterProps> = ({
               </div>
               <div>
                 <span className="text-lg font-extrabold text-white tracking-tight block">
-                  인미트 디자인제작소
+                  {companyInfo.companyName || '인미트 디자인제작소'}
                 </span>
                 <span className="text-[11px] text-[#7db701] font-mono">
-                  www.inmit.co.kr
+                  {companyInfo.websiteUrl}
                 </span>
               </div>
             </div>
@@ -144,40 +155,54 @@ export const Footer: React.FC<FooterProps> = ({
             <h4 className="text-xs font-bold text-gray-200 tracking-wider uppercase">Contact Details</h4>
             <div className="space-y-2.5 text-sm text-gray-400">
               <a
-                href="mailto:addition9@naver.com"
+                href={`mailto:${companyInfo.email}`}
                 className="flex items-center gap-2.5 hover:text-white transition-colors group"
               >
-                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701]">
+                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701] shrink-0">
                   <Mail className="w-3.5 h-3.5" />
                 </div>
-                <span>addition9@naver.com</span>
+                <span className="truncate">{companyInfo.email}</span>
               </a>
               <a
-                href="tel:010-9072-1005"
+                href={`tel:${companyInfo.phone}`}
                 className="flex items-center gap-2.5 hover:text-white transition-colors group"
               >
-                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701]">
+                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701] shrink-0">
                   <Phone className="w-3.5 h-3.5" />
                 </div>
-                <span className="font-semibold text-gray-200">010-9072-1005</span>
+                <span className="font-semibold text-gray-200">{companyInfo.phone}</span>
               </a>
               <a
-                href="http://www.inmit.co.kr"
+                href={companyInfo.websiteUrl.startsWith('http') ? companyInfo.websiteUrl : `https://${companyInfo.websiteUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2.5 hover:text-white transition-colors group"
               >
-                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701]">
+                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#7db701] shrink-0">
                   <Globe className="w-3.5 h-3.5" />
                 </div>
-                <span className="underline underline-offset-4 decoration-gray-600 group-hover:decoration-[#7db701]">
-                  www.inmit.co.kr
+                <span className="underline underline-offset-4 decoration-gray-600 group-hover:decoration-[#7db701] truncate">
+                  {companyInfo.websiteUrl}
                 </span>
-                <ExternalLink className="w-3 h-3 text-gray-500" />
+                <ExternalLink className="w-3 h-3 text-gray-500 shrink-0" />
               </a>
+
+              {/* Company Address */}
+              <div className="flex items-start gap-2.5 text-xs text-gray-300 pt-1">
+                <div className="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 mt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#7db701]" />
+                </div>
+                <div className="space-y-0.5 leading-snug">
+                  <p className="text-gray-200 font-semibold">{companyInfo.address}</p>
+                  {companyInfo.addressDetail && (
+                    <p className="text-gray-400 text-[11px]">{companyInfo.addressDetail}</p>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-2">
                 <span className="text-xs text-gray-500 block">
-                  운영시간: 평일 09:30 ~ 18:30 (점심 12:30 ~ 13:30)
+                  운영시간: {companyInfo.businessHours || '평일 09:30 ~ 18:30 (점심 12:30 ~ 13:30)'}
                 </span>
                 <span className="text-xs text-[#7db701] block mt-0.5">
                   온라인 문의 접수는 24시간 언제든 가능합니다.

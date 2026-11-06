@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, MessageCircle, ArrowUp, Send, Check } from 'lucide-react';
+import {
+  getStoredKakaoSettings,
+  KakaoSettings,
+  getStoredCompanyInfo,
+  CompanyInfo
+} from '../utils/storage';
 
 interface FloatingConsultationProps {
   onNavigateContact: () => void;
@@ -10,6 +16,8 @@ export const FloatingConsultation: React.FC<FloatingConsultationProps> = ({
 }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [kakaoSettings, setKakaoSettings] = useState<KakaoSettings>(() => getStoredKakaoSettings());
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(() => getStoredCompanyInfo());
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,12 +27,27 @@ export const FloatingConsultation: React.FC<FloatingConsultationProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleKakaoSync = () => {
+      setKakaoSettings(getStoredKakaoSettings());
+    };
+    const handleCompanySync = () => {
+      setCompanyInfo(getStoredCompanyInfo());
+    };
+    window.addEventListener('inmit-kakao-updated', handleKakaoSync);
+    window.addEventListener('inmit-company-info-updated', handleCompanySync);
+    return () => {
+      window.removeEventListener('inmit-kakao-updated', handleKakaoSync);
+      window.removeEventListener('inmit-company-info-updated', handleCompanySync);
+    };
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePhoneCallOrCopy = () => {
-    navigator.clipboard.writeText('010-9072-1005');
+    navigator.clipboard.writeText(companyInfo.phone);
     setCopiedPhone(true);
     setTimeout(() => setCopiedPhone(false), 2000);
   };
@@ -44,27 +67,29 @@ export const FloatingConsultation: React.FC<FloatingConsultationProps> = ({
 
       {/* Direct Call Button */}
       <a
-        href="tel:010-9072-1005"
-        className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#7c726e] hover:bg-[#6c635f] text-white text-xs font-bold shadow-lg transition-all hover:scale-102 border border-[#6b625e]"
-        title="전화 걸기 010-9072-1005"
+        href={`tel:${companyInfo.phone}`}
+        className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold shadow-lg transition-all hover:scale-102 border border-gray-700"
+        title={`전화 걸기 ${companyInfo.phone}`}
       >
         <div className="w-6 h-6 rounded-full bg-[#7db701] flex items-center justify-center text-white">
           <Phone className="w-3 h-3 fill-current" />
         </div>
-        <span className="hidden sm:inline font-mono">010-9072-1005</span>
+        <span className="hidden sm:inline font-mono">{companyInfo.phone}</span>
       </a>
 
-      {/* KakaoTalk Direct Link */}
-      <a
-        href="https://open.kakao.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FEE500] hover:bg-[#fae100] text-[#191919] text-xs font-extrabold shadow-xl transition-all hover:scale-105"
-        title="카카오톡 1:1 상담 바로가기"
-      >
-        <MessageCircle className="w-4 h-4 fill-current text-[#191919]" />
-        <span className="tracking-tight">카톡 상담</span>
-      </a>
+      {/* KakaoTalk Direct Link (Only when enabled in Admin settings) */}
+      {kakaoSettings.enabled && (
+        <a
+          href={kakaoSettings.url || 'https://pf.kakao.com/_YtuVn'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FEE500] hover:bg-[#fae100] text-[#191919] text-xs font-extrabold shadow-xl transition-all hover:scale-105"
+          title="카카오톡 1:1 상담 바로가기"
+        >
+          <MessageCircle className="w-4 h-4 fill-current text-[#191919]" />
+          <span className="tracking-tight">카톡 상담</span>
+        </a>
+      )}
     </aside>
   );
 };
